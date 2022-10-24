@@ -18,32 +18,21 @@ public class ExamOnlineMenuContributor : IMenuContributor
         }
     }
 
-    private async Task ConfigureMainMenuAsync(MenuConfigurationContext context)
+    private Task ConfigureMainMenuAsync(MenuConfigurationContext context)
     {
         var administration = context.Menu.GetAdministration();
         var l = context.GetLocalizer<ExamOnlineResource>();
 
-        context.Menu.Items.Insert(
-            0,
-            new ApplicationMenuItem(
-                ExamOnlineMenus.Home,
-                l["Menu:Home"],
-                "~/",
-                icon: "fas fa-home",
-                order: 0
-            )
-        );
+        context.Menu.Items.Insert(0, new ApplicationMenuItem(ExamOnlineMenus.Home, l["Menu:Home"], "~/", icon: "fas fa-home", order: 0));
 
         if (MultiTenancyConsts.IsEnabled)
         {
             administration.SetSubItemOrder(TenantManagementMenuNames.GroupName, 1);
         }
-        else
-        {
-            administration.TryRemoveMenuItem(TenantManagementMenuNames.GroupName);
-        }
 
         administration.SetSubItemOrder(IdentityMenuNames.GroupName, 2);
         administration.SetSubItemOrder(SettingManagementMenuNames.GroupName, 3);
+
+        return Task.CompletedTask;
     }
 }

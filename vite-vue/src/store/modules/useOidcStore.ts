@@ -6,85 +6,124 @@ import {
   WebStorageStateStore,
 } from "oidc-client-ts";
 import { defineStore } from "pinia";
+import useApplicationConfigStore from "./useApplicationConfigStore";
 
 export type MaybeNull<T> = T | null;
 
 export interface OidcState {
   oidcSettings: UserManagerSettings;
-  user: MaybeNull<User>;
+  userProfile: MaybeNull<UserProfile>;
   userManager: MaybeNull<UserManager>;
-  token: MaybeNull<string>;
-  hasExpiresAt: boolean;
-  redirect_uri: MaybeNull<string>;
+  access_token: MaybeNull<string>;
+  refresh_token: MaybeNull<string>;
+  id_token: MaybeNull<string>;
+  expires_at: MaybeNull<number> | undefined;
 }
 
-export const useOidcStore = defineStore({
-  id: "oidc",
+export default defineStore("oidc", {
   state: (): OidcState => {
     return {
       oidcSettings: {
-        authority: "http://localhost:5007",
-        scope: "openid profile ExamOnline",
-        client_id: "ExamOnline_Vue_App",
+        authority: import.meta.env["VITE_OIDC_AUTHORITY"],
+        scope: import.meta.env["VITE_OIDC_SCOPE"],
+        client_id: import.meta.env["VITE_OIDC_CLIENT_ID"],
         client_secret: undefined,
-        redirect_uri: origin + "/signin-callback",
+        redirect_uri: origin + import.meta.env["VITE_OIDC_REDIRECT_URI"],
         response_type: "code",
         loadUserInfo: true,
         userStore: new WebStorageStateStore({
-          prefix: "vue3-oidc",
-          store: window.localStorage,
+          prefix: "oidc-",
+          store: window.sessionStorage,
         }),
       },
-      user: null,
+      userProfile: null,
       userManager: null,
-      token: null,
-      hasExpiresAt: false,
-      redirect_uri: import.meta.env["VITE_OIDC_REDIRECT_URI"],
+      access_token: null,
+      expires_at: null,
+      refresh_token: null,
+      id_token: null,
     };
   },
+
   getters: {
     getToken(): string | null {
-      return this.token || null;
+      return this.access_token || null;
     },
-    tokenExpired(): boolean {
-      console.log(this.user);
-      return true;
+    getUserProfile(): MaybeNull<UserProfile> {
+      return this.userProfile;
+    },
+    //check token expiration. return true if it expired
+    isTokenInValid(): boolean {
+      const expiredTimeStamp = this.expires_at;
+      if (expiredTimeStamp) {
+        const currentTimeStamp = Math.round(Number(new Date()) / 1000);
+        return currentTimeStamp > expiredTimeStamp;
+      } else {
+        return true;
+      }
     },
     getUserManager(): UserManager {
       if (!this.userManager) {
         this.userManager = new UserManager(
           this.oidcSettings as UserManagerSettings
         );
-        this.userManager.events.addUserLoaded((user: User) => {
-          console.log("add Uer Loaded", user);
-          localStorage.setItem("xxxooxx", user.access_token);
-        });
+        this.userManager.events.addUserLoaded((user: User) => {});
         this.userManager.events.removeUserLoaded((user: User) => {
           console.log("remove usere loaded", user);
         });
         this.userManager.events.addUserSignedIn(() => {
           console.log("user signed in ");
         });
+        this.userManager.events.addAccessTokenExpired(() => {
+          console.log("token expired");
+        });
       }
       return this.userManager as UserManager;
     },
   },
   actions: {
-    async storeUser(user: User) {
-      this.user = user;
+    async store(user: User) {
       await this.getUserManager?.storeUser(user);
+      this.storeAccessToken(user.access_token);
+      this.storeIdToken(user.id_token || null);
+      this.storeRefreshToken(user.refresh_token || null);
+      this.storeExpredAt(user.expires_at);
+      this.storeUserProfile(user.profile);
+
+      const appConfigStore = useApplicationConfigStore();
+      await appConfigStore.initConfig();
     },
-    async removeUser() {
-      this.user = null;
+    async oidcLogout() {
       await this.getUserManager?.removeUser();
+      const appConfigStore = useApplicationConfigStore();
+      appConfigStore.$reset();
+      this.$reset();
     },
-    storeToken(token: string) {
-      this.token = token;
+    storeUserProfile(userProfile: UserProfile) {
+      this.userProfile = userProfile;
+    },
+    storeIdToken(idToken: MaybeNull<string>) {
+      this.id_token = idToken;
+    },
+    storeAccessToken(accessToken: MaybeNull<string>) {
+      this.access_token = accessToken;
+    },
+    storeExpredAt(expiresAt: MaybeNull<number> | undefined) {
+      this.expires_at = expiresAt;
+    },
+    storeRefreshToken(refreshToken: MaybeNull<string>) {
+      this.refresh_token = refreshToken;
     },
   },
   persist: {
     storage: localStorage,
-    //paths: ["user"],
-    key: "oidc-",
+    paths: [
+      "access_token",
+      "userProfile",
+      "expires_at",
+      "refresh_token",
+      "id_token",
+    ],
+    key: "oidc-store"
   },
 });

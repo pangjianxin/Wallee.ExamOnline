@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -32,6 +33,7 @@ using Volo.Abp.Modularity;
 using Volo.Abp.SettingManagement.Web;
 using Volo.Abp.Swashbuckle;
 using Volo.Abp.TenantManagement.Web;
+using Volo.Abp.Timing;
 using Volo.Abp.UI.Navigation;
 using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.VirtualFileSystem;
@@ -99,6 +101,16 @@ public class ExamOnlineWebModule : AbpModule
         ConfigureAutoApiControllers();
         ConfigureSwaggerServices(context.Services);
         ConfigureCors(context, configuration);
+        ConfigureCookie(context);
+        ConfigureClock();
+    }
+
+    private void ConfigureClock()
+    {
+        Configure<AbpClockOptions>(options =>
+        {
+            options.Kind = DateTimeKind.Local;
+        });
     }
     private void ConfigureCors(ServiceConfigurationContext context, IConfiguration configuration)
     {
@@ -120,6 +132,15 @@ public class ExamOnlineWebModule : AbpModule
                     .AllowCredentials();
             });
         });
+    }
+
+    private void ConfigureCookie(ServiceConfigurationContext context)
+    {
+        context.Services.ConfigureApplicationCookie(options =>
+        {
+            options.Cookie.SameSite = SameSiteMode.Strict;
+        });
+
     }
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)

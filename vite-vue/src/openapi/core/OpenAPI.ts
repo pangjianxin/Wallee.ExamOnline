@@ -2,6 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { ApiRequestOptions } from "./ApiRequestOptions";
+import oidcStore from "/@/store/modules/useOidcStore";
 
 type Resolver<T> = (options: ApiRequestOptions) => Promise<T>;
 type Headers = Record<string, string>;
@@ -12,20 +13,17 @@ export type OpenAPIConfig = {
   WITH_CREDENTIALS: boolean;
   CREDENTIALS: "include" | "omit" | "same-origin";
   TOKEN?: string | Resolver<string>;
-  USERNAME?: string | Resolver<string>;
-  PASSWORD?: string | Resolver<string>;
   HEADERS?: Headers | Resolver<Headers>;
   ENCODE_PATH?: (path: string) => string;
 };
 
 export const OpenAPI: OpenAPIConfig = {
-  BASE: "http://localhost:5007",
+  BASE: import.meta.env["VITE_API_URL"],
   VERSION: "1",
   WITH_CREDENTIALS: false,
   CREDENTIALS: "include",
-  TOKEN: undefined,
-  USERNAME: undefined,
-  PASSWORD: undefined,
+  TOKEN: () =>
+    new Promise((resolve) => resolve(oidcStore().getToken as string)),
   HEADERS: undefined,
   ENCODE_PATH: undefined,
 };

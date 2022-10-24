@@ -73,6 +73,7 @@ public class ExamOnlineDbContext :
         builder.ConfigureFeatureManagement();
         builder.ConfigureTenantManagement();
 
+        builder.ConfigExamOnline();
         /* Configure your own tables/entities inside here */
 
         //builder.Entity<YourEntity>(b =>
